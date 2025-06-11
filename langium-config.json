@@ -1,0 +1,20 @@
+{
+    "projectName": "Rcl",
+    "languages": [
+        {
+            "id": "rcl",
+            "grammar": "src/language/rcl.langium",
+            "fileExtensions": [".rcl"],
+            "textMate": {
+                "out": "syntaxes/rcl.tmLanguage.json"
+            },
+            "monarch": {
+                "out": "src/syntaxes/rcl.monarch.ts"
+            }
+        }
+    ],
+    "out": "src/language/generated",
+    "chevrotainParserConfig": {
+        "maxLookahead": 4
+    }
+}

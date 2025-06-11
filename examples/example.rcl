@@ -1,0 +1,257 @@
+agent MyBrand.SampleAgent
+
+  displayName: "Sample Agent"
+  brandName: "Sample Brand"
+
+  Config
+    # See agent.schema.json for the full list of config options.
+
+  Defaults
+    messageTrafficType: :TRANSACTION
+    fallback_message: "I didn't understand that. Let me connect you with support."
+    ttl: "PT1H"
+    expressions:
+      language: :rclscript
+    postbackData: $> format @selectedOption.text as :dash_case
+
+  flow Default
+    :start -> Welcome
+
+    :error -> text "Please try again"
+
+    Welcome ->
+      when @option.text ...
+        "Tell me more" -> Check Status
+        "Book an appointment" -> Book Appointment
+        "Contact support" -> Contact Support
+        starts_with "Appointment" and ^it ends_with ...
+            "1" -> Status Response with id: 1, time: <time 10:00>
+            "2" -> Status Response with id: 2, time: <time 11:00>
+            "3" -> Status Response with id: 3, time: <time 12:00>
+
+    Check Status ->
+      when @option.text is ... or @option.text matches ...
+        "Book Appointment" -> Book Appointment
+        "Contact Support" -> Contact Support
+        /Appointment (number:[0-9]+)/ -> Status Response with id: number, time: <time 10 + number>
+
+
+    Status Response ->
+        "Reschedule" -> book_appointment
+        "Cancel" -> confirm_cancellation
+
+    Confirm Cancellation ->
+        "Yes" -> :START
+        "No" -> check_status
+
+  Messages
+    Welcome ->
+      text "Hello! This is a transactional message with various suggestions. How can I help you today?"
+        suggestions:
+          reply "Tell me more"
+          dialAction "Call Us" "+1234567890"
+          openUrlAction "Visit Website" "https://www.example.com"
+          shareLocation "Share Location"
+          viewLocation "View Location" # TBD
+          createCalendarEvent "Book Meeting" # TBD
+
+    agentMessage:
+      # Root options for the message
+      messageTrafficType: :TRANSACTION # Other options: :AUTHENTICATION, :PROMOTION, :SERVICEREQUEST, :ACKNOWLEDGEMENT
+      expireTime: "2024-12-31T23:59:59Z"
+      # ttl "P7D" # Alternative to expireTime: "P7D" means 7 days. Mutually exclusive.
+
+      contentMessage:
+        text: "Hello! This is a transactional message with various suggestions. How can I help you today?"
+
+      suggestions:
+        # Suggested Reply
+        reply text: "Tell me more", postbackData: "tell_me_more_pb"
+
+        # Suggested Action: Dial
+        action text: "Call Us", postbackData: "dial_action_pb"
+            dialAction: phoneNumber: "+1234567890"
+
+
+        # Suggested Action: Open URL
+        action text: "Visit Website", postbackData: "open_url_pb"
+            openUrlAction:
+                url: "https://www.example.com"
+
+
+        # Suggested Action: Share Location
+        action text: "Share Location", postbackData: "share_location_pb"
+            shareLocationAction:
+
+
+        # Suggested Action: View Location (with LatLong)
+        action
+            text: "View Our Office"
+            postbackData: "view_location_latlong_pb"
+            viewLocationAction:
+                label: "Our Office Location"
+                latLong: latitude: 37.7749, longitude: -122.4194
+
+
+        # Suggested Action: View Location (with Query)
+        action text: "Search Park", postbackData: "view_location_query_pb"
+            viewLocationAction query: "Golden Gate Park, San Francisco", label: "Nearby Park"
+              # Empty block because only options are used and latLong entity is not.
+
+        # Suggested Action: Create Calendar Event
+        action text: "Book Meeting", postbackData: "create_calendar_pb"
+            createCalendarEventAction
+              title: "Project Discussion"
+              startTime: "2025-01-15T10:00:00Z"
+              endTime: "2025-01-15T11:00:00Z"
+              description: "Discuss project milestones."
+
+
+        # Max 11 suggestions for contentMessage. Current: 9
+
+    agentMessage
+      messageTrafficType :ACKNOWLEDGEMENT
+      ttl "PT1H" # Expires in 1 hour
+
+      contentMessage
+        fileName "receipt_user_device.pdf"
+        text "Here is the receipt saved on your device." # Optional text to accompany fileName
+
+        reply text: "Got it!", postbackData: "ack_file_receipt"
+
+    agentMessage
+      messageTrafficType :TRANSACTION
+      expireTime "2024-11-30T12:00:00Z"
+
+      contentMessage
+        # uploadedRbmFile is an option of type :struct, so it takes a map.
+        uploadedRbmFile %{
+          fileName: "invoice_123.pdf", # Name of the RBM file previously uploaded by the agent
+          thumbnailUrl: "https://cdn.example.com/thumbnails/invoice_123_thumb.png", # Optional
+          thumbnailName: "invoice_123_thumb_rbm.png" # Optional
+        }
+        # text "Please find your invoice attached." # Optional text
+
+        suggestion
+          action
+            text: "View Details"
+            postbackData: "view_invoice_123"
+            openUrlAction:
+                url: "https://example.com/invoice/123/details"
+
+
+    agentMessage
+      messageTrafficType :PROMOTION
+      ttl "P1D" # Expires in 1 day
+
+      contentMessage
+        # contentInfo is an option of type :struct when used directly under contentMessage.
+        contentInfo %{
+          fileUrl: "https://www.example.com/promo_video.mp4",
+          thumbnailUrl: "https://www.example.com/promo_video_thumb.jpg", # Optional
+          forceRefresh: false # Optional, defaults to false
+          # altText is part of the struct but not in the DSL extension schema for contentInfo as an option.
+        }
+        text "Check out our new promotional video!" # Optional text
+
+        suggestion
+          reply text: "Cool!", postbackData: "promo_video_cool"
+
+
+    agentMessage
+      messageTrafficType :TRANSACTION
+      expireTime "2024-12-01T00:00:00Z"
+
+      contentMessage
+        richCard
+          standaloneCard
+            cardOrientation :HORIZONTAL # or :VERTICAL
+            # thumbnailImageAlignment is only applicable for HORIZONTAL orientation
+            thumbnailImageAlignment :LEFT # or :RIGHT
+
+            cardContent
+              title "Product Showcase"
+              description "Explore our latest product with amazing features and a sleek design."
+
+              media
+                height :MEDIUM # :SHORT, :MEDIUM, :TALL
+                # contentInfo is an entity under media
+                contentInfo
+                  fileUrl "https://www.example.com/product_image.jpg"
+                  thumbnailUrl "https://www.example.com/product_thumbnail.jpg" # Optional
+                  forceRefresh false
+
+
+              # Suggestions within a card (Max 4)
+              suggestion
+                reply text: "Interested", postbackData: "product_interested_pb"
+
+              suggestion
+                action text: "Learn More", postbackData: "product_learn_more_pb"
+                  openUrlAction url: "https://www.example.com/product/details"
+
+              suggestion
+                action text: "Get Price", postbackData: "product_get_price_pb"
+                  # Example: A dial action or a specific postback to trigger a flow
+                  dialAction phoneNumber: "+15550987654"
+
+
+
+        # Top-level suggestions (optional, if the rich card itself isn't the only interaction)
+        suggestion
+          reply text: "Main Menu", postbackData: "main_menu_pb"
+
+
+    agentMessage
+      messageTrafficType :PROMOTION
+      ttl "P3D"
+
+      contentMessage
+        richCard
+          carouselCard
+            cardWidth :MEDIUM # :SMALL or :MEDIUM
+
+            # cardContents requires 2 to 10 cards.
+            # All cards in a carousel must have the same media.height if media is present.
+
+            # Card 1
+            cardContent
+              title "Item 1: Modern Watch"
+              description "Stylish and smart."
+              media
+                height :SHORT # All media in carousel must have this height
+                contentInfo
+                  fileUrl "https://www.example.com/item1.jpg"
+
+              suggestion
+                action text: "View Item 1", postbackData: "carousel_item1_pb"
+                  openUrlAction url: "https://www.example.com/item1"
+
+            # Card 2
+            cardContent
+              title "Item 2: Wireless Headphones"
+              description "Crystal clear sound."
+              media
+                height :SHORT # Consistent media height
+                contentInfo
+                  fileUrl "https://www.example.com/item2.jpg"
+
+              suggestion
+                action text: "View Item 2", postbackData: "carousel_item2_pb"
+                  openUrlAction url: "https://www.example.com/item2"
+
+            # Card 3 (Optional, up to 10)
+            cardContent
+              title "Item 3: Smart Speaker"
+              description "Your home assistant."
+              media
+                height :SHORT # Consistent media height
+                contentInfo
+                  fileUrl "https://www.example.com/item3.jpg"
+
+              suggestion
+                action text: "View Item 3", postbackData: "carousel_item3_pb"
+                  openUrlAction url: "https://www.example.com/item3"
+
+        suggestion
+          reply text: "Exit Carousel", postbackData: "exit_carousel_pb"
