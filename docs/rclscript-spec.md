@@ -25,7 +25,40 @@ Access flow context with `@` prefix:
 - Used for enums and special values
 - Example: `:TRANSACTIONAL` → `"TRANSACTIONAL"`
 
-### 3. Function Calls
+### 3. Identifiers
+Identifiers are names used for variables, functions, and other named entities within RclScript (excluding Context Variables prefixed with `@` and Symbols prefixed with `:`).
+
+**Rules for Valid Identifiers:**
+- Must start with an uppercase letter (A-Z).
+- Subsequent characters can be uppercase letters (A-Z), lowercase letters (a-z), numbers (0-9), or hyphens (`-`).
+- Spaces are allowed within an identifier, but only if the character immediately following the space is an uppercase letter or a number. This allows for multi-word identifiers that read naturally.
+- Hyphens (`-`) are allowed but cannot be preceded or followed by a space. They must be part of a continuous sequence of non-space characters.
+- Identifiers are case-sensitive.
+
+**Examples of Valid Identifiers:**
+```
+MyVariable
+CustomerName
+ProcessOrder
+User ID
+Order Number 123
+Calculate-Total-Amount
+Is Active User
+URL-Validator
+ItemCount
+```
+
+**Examples of Invalid Identifiers:**
+```
+myVariable         # Must start with an uppercase letter
+_MyVariable        # Cannot start with an underscore (reserved for embedded comments)
+123Order           # Cannot start with a number
+Customer Name      # Space before 'Name' is okay, but 'name' is not capitalized or a number
+User - ID          # Hyphen surrounded by spaces
+An identifier      # Starts with uppercase, but 'identifier' is not capitalized or a number
+```
+
+### 4. Function Calls
 Natural syntax without parentheses:
 ```rcl
 format @user.name as title case
@@ -40,12 +73,12 @@ When an argument is an operation (like another function call), you **MUST EITHER
 
 | JavaScript | RclScript | Alternative | Notes |
 |------------|-----------|-------------|-------|
-| `String.toLowerCase(number.toFixed(2))` | `String.toLowerCase number.toFixed(2)` | `number \|> toFixed 2 \|> String.toLowerCase` | No comma option supported |
-| `String.toLowerCase(Number(number).toFixed(2))` | `String.toLowerCase(Number(number).toFixed 2)` | `(number \|> Number).toFixed 2 \|> String.toLowerCase` | No comma option supported |
+| `String.toLowerCase(number.toFixed(2))` | `String.toLowerCase number.toFixed(2)` | `number |> toFixed 2 |> String.toLowerCase` | No comma option supported |
+| `String.toLowerCase(Number(number).toFixed(2))` | `String.toLowerCase(Number(number).toFixed 2)` | `(number |> Number).toFixed 2 |> String.toLowerCase` | No comma option supported |
 | `funA(a, funB(b))` | `funA a, funB b` | `funA a, funB(b)` | Multiple options |
 | `funA(funB(b), a)` | `funA funB(b) a` | `funA funB b, a` | Also: `funA funB(b), a` |
 
-### 4. Pipe Operator (`|>`)
+### 5. Pipe Operator (`|>`)
 Chains function calls left-to-right:
 ```rcl
 number |> toFixed 2 |> String.toLowerCase
@@ -55,7 +88,7 @@ Equivalent to:
 String.toLowerCase(number.toFixed(2))
 ```
 
-### 5. Innocuous Keywords
+### 6. Innocuous Keywords
 These words are ignored during compilation:
 - `as`, `a`, `an`, `the`, `with`
 
@@ -68,7 +101,7 @@ Compiles to:
 show(message, user)
 ```
 
-### 6. Returning Values
+### 7. Returning Values
 
 Use the left-arrow operator (`<-`) to return a value.
 
@@ -78,7 +111,7 @@ Use the left-arrow operator (`<-`) to return a value.
   <- "Hello #{name}, your appointment is at #{time}"
 ```
 
-### 7. Statement Expansion with Ellipsis
+### 8. Statement Expansion with Ellipsis
 
 When an ellipsis (`...`) is used in a statement, it takes a clause list and replaces each ellipsis with the condition part of the clause, for each clause.
 
@@ -110,7 +143,7 @@ when @option.text is "Contact Support" or @option.text matches "Contact Support"
 when @option.text is /Appointment (number:[0-9]+)/ or @option.text matches /Appointment (number:[0-9]+)/ -> Status Response with id: number, time: <time 10 + number>
 ```
 
-### 8. Conditional Logic
+### 9. Conditional Logic
 
 #### When Clauses
 ```rcl
@@ -167,14 +200,14 @@ switch (context.selectedOption.text) {
 }
 ```
 
-### 9. Type Conversion
+### 10. Type Conversion
 Syntax: `<type value>`
 Example:
 ```rcl
 send_confirmation to: <email @user.email>, time: <time @appointment.time>
 ```
 
-### 10. Multi-line Strings
+### 11. Multi-line Strings
 Used within RclScript expressions:
 ```rcl
 description: |
@@ -184,62 +217,4 @@ description: |
 ```
 
 ## Operator Precedence
-1. Parentheses `()`
-2. Function application
-3. Mathematical operators (`*`, `/`, `+`, `-`)
-4. Comparison operators (`is`, `contains`, etc.)
-5. Logical operators (`and`, `or`)
-6. Pipe operator (`|>`)
-
-## Pattern Matching Operators
-- `is` / `is not` - Equality comparison
-- `contains` - String/collection containment
-- `starts_with` / `ends_with` - String prefix/suffix matching
-- `matches` - Regular expression matching
-- `is greater than` / `is less than` - Numeric comparison
-- `is between` - Range checking
-
-## JavaScript Translation Rules
-1. `@var` → `context.var`
-2. `:symbol` → `$symbol`
-3. Remove innocuous keywords
-4. Convert natural function calls to standard JS
-5. Expand pipe operators
-6. Apply type conversions
-7. Expand ellipsis statements
-8. Convert pattern matching to conditionals
-
-## Examples
-
-### Basic Example
-```rcl
-format @user.name as title case
-```
-
-### Multi-line Example
-```rcl
-  name = format @user.name
-  time = <time @appointment.time | @user.timezone>
-  <- "Hello #{name}, see you at #{time}"
-```
-
-### Conditional Logic
-```rcl
-when @option.text contains "help" -> show_help
-```
-
-### Statement Expansion
-```rcl
-when @message contains ...
-  "book" -> Book Appointment  
-  "cancel" -> Cancel Appointment
-  "help" -> Get Help
-```
-
-## Implementation Notes
-1. RclScript executes in a sandboxed JavaScript environment
-2. Only standard ES6 features + `Rcl.Utils` are available
-3. Default language can be set in `Defaults.expression.language`
-4. Automatic `postbackData` generation can be customized via `Defaults.postbackData`
-5. Statement expansion happens during code generation, not parsing
-6. Pattern matching with `^it` provides captured variable binding
+// ... existing code ...
